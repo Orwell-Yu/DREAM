@@ -110,6 +110,47 @@ def get_action_prompt(instruction, clickable_infos, width, height, thought_histo
 
     return prompt
 
+def get_eval_prompt(instruction, thought_history, summary_history, action_history, decisionA, decisionB):
+    """
+    Constructs an evaluation prompt for GPT-4o to decide which decision is better.
+    
+    Parameters:
+        instruction (str): The user's instruction.
+        thought_history (list of str): List of previous thoughts.
+        summary_history (list of str): List of previous summaries.
+        action_history (list of str): List of previous actions.
+        decisionA (dict): Dictionary containing 'action', 'thought', 'summary' for Decision A.
+        decisionB (dict): Dictionary containing 'action', 'thought', 'summary' for Decision B.
+        
+    Returns:
+        prompt (str): The complete evaluation prompt.
+    """
+    prompt = "### User Requirement ###\n"
+    prompt += f"The user instruction is: {instruction}.\n\n"
+
+    if thought_history or summary_history or action_history:
+        prompt += "### History Operations ###\n"
+        prompt += "Below are the history operations before arriving at the current screenshot:\n"
+        for i in range(len(action_history)):
+            prompt += f"Step-{i+1}: [Thought: {thought_history[i]}; Summary: {summary_history[i]}; Action: {action_history[i]}]\n"
+        prompt += "\n"
+    
+    prompt += "### Decision A ###\n"
+    prompt += f"Action: {decisionA['action']}\n"
+    prompt += f"Thought: {decisionA['thought']}\n"
+    prompt += f"Summary: {decisionA['summary']}\n\n"
+    
+    prompt += "### Decision B ###\n"
+    prompt += f"Action: {decisionB['action']}\n"
+    prompt += f"Thought: {decisionB['thought']}\n"
+    prompt += f"Summary: {decisionB['summary']}\n\n"
+    
+    prompt += (
+        "Based on the above information, please decide which decision better fulfills the user instruction.\n"
+        "Respond with only \"A\" or \"B\"."
+    )
+    
+    return prompt
 
 def get_reflect_prompt(instruction, clickable_infos1, clickable_infos2, width, height, summary, action, add_info):
     prompt = f"These images are two computer screenshots before and after an operation. Their widths are {width} pixels and their heights are {height} pixels.\n\n"
@@ -223,3 +264,4 @@ def get_process_prompt(instruction, thought_history, summary_history, action_his
         prompt += "(Please use English to output)"
         
     return prompt
+

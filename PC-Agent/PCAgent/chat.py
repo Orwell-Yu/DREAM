@@ -8,6 +8,12 @@ def init_action_chat():
     operation_history.append(["system", [{"type": "text", "text": sysetm_prompt}]])
     return operation_history
 
+def init_eval_chat():
+    operation_history = []
+    sysetm_prompt = "You are a helpful AI PC operating assistant. You need to help me operate the PC to complete the user\'s instruction."
+    operation_history.append(["system", [{"type": "text", "text": sysetm_prompt}]])
+    return operation_history
+
 
 def init_reflect_chat():
     operation_history = []

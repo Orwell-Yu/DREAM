@@ -22,11 +22,11 @@ import concurrent
 
 ####################################### Edit your Setting #########################################
 # Your ADB path
-adb_path = "/Users/mio/Documents/Agent/MobileAgent/platform-tools/adb"
+adb_path = "../platform-tools/adb"
 
 # Your instruction
 # instruction = "帮我在淘宝找一个4000元以下的AMD 9800X3D CPU 加入购物车"
-instruction = "帮我在微信上和Legend说谢谢"
+# instruction = "帮我在微信上和Legend说谢谢"
 
 # Your GPT-4o API URL
 API_url = "https://api.openai.com/v1/chat/completions"
@@ -256,20 +256,32 @@ else:
 
 
 ### Load ocr and icon detection model ###
-device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-print(f"Using device: {device}")
+if torch.cuda.is_available():
+    device = torch.device("cuda")
+    device_name = "CUDA"
+elif torch.backends.mps.is_available():
+    device = torch.device("mps")
+    device_name = "MPS"
+else:
+    device = torch.device("cpu")
+    device_name = "CPU"
+
+print(f"Using device: {device_name}")
+
 groundingdino_dir = snapshot_download('AI-ModelScope/GroundingDINO', revision='v1.0.0')
 # groundingdino_dir = snapshot_download('AI-ModelScope/GroundingDINO')
 groundingdino_model = pipeline('grounding-dino-task', model=groundingdino_dir)
 groundingdino_model.model.to(device)
-ocr_detection = pipeline(Tasks.ocr_detection, model='damo/cv_resnet18_ocr-detection-line-level_damo')
-# ocr_detection = pipeline(Tasks.ocr_detection, model='iic/cv_resnet18_ocr-detection-line-level_damo', framework="pytorch")
-ocr_recognition = pipeline(Tasks.ocr_recognition, model='damo/cv_convnextTiny_ocr-recognition-document_damo')
-# ocr_recognition = pipeline(Tasks.ocr_recognition, model='iic/cv_convnextTiny_ocr-recognition-document_damo', framework="pytorch")
+# ocr_detection = pipeline(Tasks.ocr_detection, model='damo/cv_resnet18_ocr-detection-line-level_damo')
+ocr_detection = pipeline(Tasks.ocr_detection, model='iic/cv_resnet18_ocr-detection-line-level_damo', framework="pytorch")
+# ocr_recognition = pipeline(Tasks.ocr_recognition, model='damo/cv_convnextTiny_ocr-recognition-document_damo')
+ocr_recognition = pipeline(Tasks.ocr_recognition, model='iic/cv_convnextTiny_ocr-recognition-document_damo', framework="pytorch")
 # print(type(ocr_detection.model))  # 如果是 PyTorch，应该输出 <class 'torch.nn.Module'>
 # print(type(ocr_recognition.model))  # 如果是 PyTorch，应该输出 <class 'torch.nn.Module'>
-# ocr_detection.model.to(device)
-# ocr_recognition.model.to(device)
+if device_name in ["CUDA", "MPS"]:
+    ocr_detection.model.to(device)
+    ocr_recognition.model.to(device)
+
 thought_history = []
 summary_history = []
 action_history = []
