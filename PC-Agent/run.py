@@ -6,10 +6,12 @@ import shutil
 from PIL import Image, ImageDraw
 
 from PCAgent.api import inference_chat, inference_chat_V2
+from PCAgent.api_gemini import inference_chat, inference_chat_V2
 from PCAgent.text_localization import ocr
 from PCAgent.icon_localization import det
 from PCAgent.prompt import get_action_prompt, get_eval_prompt, get_reflect_prompt, get_memory_prompt, get_process_prompt
 from PCAgent.chat import init_action_chat, init_eval_chat, init_reflect_chat, init_memory_chat, add_response
+from PCAgent.chat_gemini import init_action_chat, init_eval_chat, init_reflect_chat, init_memory_chat, add_response
 
 from modelscope.pipelines import pipeline
 from modelscope.utils.constant import Tasks
