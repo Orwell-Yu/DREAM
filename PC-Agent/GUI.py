@@ -21,6 +21,7 @@ class RunProcessApp(tk.Tk):
         self.enable_reflection = tk.BooleanVar(value=True)
         self.enable_memory = tk.BooleanVar(value=True)
         self.enable_eval = tk.BooleanVar(value=True)
+        self.model_backend = tk.StringVar(value="gpt")
         
         self.build_gui()
         self.process = None
@@ -43,6 +44,9 @@ class RunProcessApp(tk.Tk):
         ttk.Label(self, text="PC Type:").grid(row=2, column=0, sticky="w", padx=5, pady=5)
         ttk.Radiobutton(self, text="Windows", variable=self.pc_type, value="windows").grid(row=2, column=1, sticky="w", padx=5, pady=5)
         ttk.Radiobutton(self, text="Mac", variable=self.pc_type, value="mac").grid(row=2, column=2, sticky="w", padx=5, pady=5)
+        # Model selection
+        ttk.Label(self, text="Model:").grid(row=2, column=3, sticky="w", padx=5, pady=5)
+        ttk.Combobox(self, textvariable=self.model_backend, values=["gpt", "gemini"], state="readonly", width=10).grid(row=2, column=4, sticky="w", padx=5, pady=5)
         
         # 第四行：功能开关
         ttk.Checkbutton(self, text="Enable Reflection", variable=self.enable_reflection).grid(row=3, column=0, sticky="w", padx=5, pady=5)
@@ -88,6 +92,8 @@ class RunProcessApp(tk.Tk):
             cmd.append("--disable_memory")
         if not self.enable_eval.get():
             cmd.append("--disable_eval")
+        # Add backend model selection
+        cmd.extend(["--model_backend", self.model_backend.get()])
         
         self.output_text.insert(tk.END, "Starting process with command:\n" + " ".join(cmd) + "\n")
         self.output_text.see(tk.END)

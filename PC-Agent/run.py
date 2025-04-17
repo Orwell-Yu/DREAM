@@ -5,8 +5,8 @@ import torch
 import shutil
 from PIL import Image, ImageDraw
 
-from PCAgent.api import inference_chat, inference_chat_V2
-from PCAgent.api_gemini import inference_chat, inference_chat_V2
+from PCAgent.api import inference_chat as gpt_inference_chat, inference_chat_V2 as gpt_inference_chat_V2
+from PCAgent.api_gemini import inference_chat as gemini_inference_chat, inference_chat_V2 as gemini_inference_chat_V2
 from PCAgent.text_localization import ocr
 from PCAgent.icon_localization import det
 from PCAgent.prompt import get_action_prompt, get_eval_prompt, get_reflect_prompt, get_memory_prompt, get_process_prompt
@@ -95,8 +95,23 @@ parser.add_argument('--disable_memory', action='store_true')
 parser.add_argument('--disable_eval', action='store_true')
 # 新增参数：如果选择了 direct_print，则只打印到终端，不写入文件日志
 parser.add_argument('--direct_print', action='store_true', help="If set, only print to terminal without writing log file.")
+parser.add_argument('--model_backend', type=str, choices=['gpt','gemini'], default='gpt', help="Choose LLM backend: 'gpt' or 'gemini'.")
+parser.add_argument('--gemini_api', type=str, default='AIzaSyAm_BULFr7orPO86S4FXeqI52Je9hIdxRs', help="Your Gemini API key.")
 
 args = parser.parse_args()
+gemini_token = args.gemini_api
+# Choose the appropriate API token based on backend
+if args.model_backend == 'gemini':
+    token = gemini_token
+else:
+    token = args.api_token
+# Choose inference backend
+if args.model_backend == 'gemini':
+    inference_chat = gemini_inference_chat
+    inference_chat_V2 = gemini_inference_chat_V2
+else:
+    inference_chat = gpt_inference_chat
+    inference_chat_V2 = gpt_inference_chat_V2
 
 if args.pc_type == "mac":
     ctrl_key = "command"
@@ -108,7 +123,10 @@ else:
     ratio = 1
     args.font_path = r"C:\Windows\Fonts\times.ttf"
 
-vl_model_version = 'gpt-4o'
+if args.model_backend == 'gemini':
+    vl_model_version = 'gemini-2.0-flash-001'
+else:
+    vl_model_version = 'gpt-4o'
 
 def get_screenshot():
     screenshot = pyautogui.screenshot()
@@ -615,7 +633,7 @@ while True:
             prompt_planning = get_process_prompt(instruction, thought_history, summary_history, action_history, completed_requirements, add_info)
             chat_planning = init_memory_chat()
             chat_planning = add_response("user", prompt_planning, chat_planning)
-            output_planning = inference_chat(chat_planning, 'gpt-4o', API_url, token)
+            output_planning = inference_chat(chat_planning, vl_model_version, API_url, token)
             chat_planning = add_response("assistant", output_planning, chat_planning)
             status = "#" * 50 + " Planning " + "#" * 50
             log_print(status)
@@ -635,7 +653,7 @@ while True:
         prompt_planning = get_process_prompt(instruction, thought_history, summary_history, action_history, completed_requirements, add_info)
         chat_planning = init_memory_chat()
         chat_planning = add_response("user", prompt_planning, chat_planning)
-        output_planning = inference_chat(chat_planning, 'gpt-4o', API_url, token)
+        output_planning = inference_chat(chat_planning, vl_model_version, API_url, token)
         chat_planning = add_response("assistant", output_planning, chat_planning)
         status = "#" * 50 + " Planning " + "#" * 50
         log_print(status)
