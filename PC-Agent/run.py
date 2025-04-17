@@ -35,8 +35,11 @@ warnings.filterwarnings("ignore")
 import re
 import random
 from PIL import ImageFont
+from reward.rewardmodel import RewardModel
+from transformers import AutoTokenizer as HFTokenizer
 
 # Open word and create a new document named "hello, world", and type "hello, world" in it.
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print("Program Start...", flush=True)
 # 日志文件路径及初始化日志文件
@@ -96,6 +99,7 @@ parser.add_argument('--add_info', type=str, default='')
 parser.add_argument('--disable_reflection', action='store_true')  
 parser.add_argument('--disable_memory', action='store_true')
 parser.add_argument('--disable_eval', action='store_true')
+parser.add_argument('--enable_reward', action='store_true')
 # 新增参数：如果选择了 direct_print，则只打印到终端，不写入文件日志
 parser.add_argument('--direct_print', action='store_true', help="If set, only print to terminal without writing log file.")
 parser.add_argument('--model_backend', type=str, choices=['gpt','gemini'], default='gpt', help="Choose LLM backend: 'gpt' or 'gemini'.")
@@ -142,7 +146,6 @@ else:
     vl_model_version = 'gpt-4o'
     API_url = args.api_url
     token = args.api_token
-
 
 def get_screenshot():
     screenshot = pyautogui.screenshot()
@@ -227,6 +230,7 @@ else:
 reflection_switch = True if not args.disable_reflection else False
 memory_switch = True if not args.disable_reflection else False
 eval_switch = True if not args.disable_eval else False
+enable_reward = True if args.enable_reward else False
 
 
 def get_all_files_in_folder(folder_path):
@@ -441,7 +445,6 @@ def get_perception_infos(screenshot_file, screenshot_som_file, font_path):
     return perception_infos, total_width, total_height
 
 ### Load caption model ###
-device = "cuda"
 torch.manual_seed(1234)
 if caption_call_method == "local":
     if caption_model == "qwen-vl-chat":
@@ -542,20 +545,84 @@ while True:
         decisionA = {"action": action, "thought": thought, "summary": summary}
         decisionB = {"action": action2, "thought": thought2, "summary": summary2}
 
-        # 调用 get_eval_prompt 构造评估 prompt（要求 GPT-4o 仅输出 "A" 或 "B"）
-        judge_prompt = get_eval_prompt(instruction, thought_history, summary_history, action_history, decisionA, decisionB)
+        if enable_reward:
+            base_model_name = "qwen/Qwen2.5-0.5B"
+            reward_model_dir = "../reward_model"
+            # 1) 准备 tokenizer
+            tokenizer = HFTokenizer.from_pretrained(
+                base_model_name,
+                trust_remote_code=True
+            )
+            # 2) 实例化 RewardModel 并加载权重
+            reward_model = RewardModel(base_model_name)
+            state = torch.load(os.path.join(reward_model_dir, "pytorch_model.bin"), map_location=device)
+            reward_model.load_state_dict(state)
+            reward_model.to(device).eval()
 
-        # 调用 GPT-4o API 进行判断
-        judge_chat = init_eval_chat()
-        judge_chat = add_response("user", judge_prompt, judge_chat)
-        judge_output = inference_chat(judge_chat, vl_model_version, API_url, token)
-        judge_decision = judge_output.strip().upper()  # 预期输出为 "A" 或 "B"
-        log_print("#" * 50 + " Judge Decision " + "#" * 50)
-        log_print("Judge Output: " + judge_decision)
-        log_print("#" * 50)
+            textA = (
+                f"intent: {instruction}\n"
+                f"prev_action: {thought}\n"
+                f"predict_action: {action}\n"
+            )
+            textB = (
+                f"intent: {instruction}\n"
+                f"prev_action: {thought2}\n"
+                f"predict_action: {action2}\n"
+            )
 
-        # 根据判断结果选择对应的操作
-        chosen_action = action if judge_decision == "A" else action2
+            # 编码
+            inputsA = tokenizer(
+                textA,
+                return_tensors="pt",
+                truncation=True,
+                padding=True,
+                max_length=512
+            )
+            inputsB = tokenizer(
+                textB,
+                return_tensors="pt",
+                truncation=True,
+                padding=True,
+                max_length=512
+            )
+
+            # 计算分数
+            with torch.no_grad():
+                rewardA = reward_model(
+                    inputsA["input_ids"].to(device),
+                    inputsA["attention_mask"].to(device)
+                )
+                rewardB = reward_model(
+                    inputsB["input_ids"].to(device),
+                    inputsB["attention_mask"].to(device)
+                )
+
+            # 日志输出
+            log_print(f"Reward A: {rewardA.item():.4f}")
+            log_print(f"Reward B: {rewardB.item():.4f}")
+
+            # 选分数更高的
+            if rewardA >= rewardB:
+                chosen_action = action
+                log_print("Decision A")
+            else:
+                chosen_action = action2
+                log_print("Decision B")
+        else:
+            # 调用 get_eval_prompt 构造评估 prompt（要求 GPT-4o 仅输出 "A" 或 "B"）
+            judge_prompt = get_eval_prompt(instruction, thought_history, summary_history, action_history, decisionA, decisionB)
+
+            # 调用 GPT-4o API 进行判断
+            judge_chat = init_eval_chat()
+            judge_chat = add_response("user", judge_prompt, judge_chat)
+            judge_output = inference_chat(judge_chat, vl_model_version, API_url, token)
+            judge_decision = judge_output.strip().upper()  # 预期输出为 "A" 或 "B"
+            log_print("#" * 50 + " Judge Decision " + "#" * 50)
+            log_print("Judge Output: " + judge_decision)
+            log_print("#" * 50)
+
+            # 根据判断结果选择对应的操作
+            chosen_action = action if judge_decision == "A" else action2
     
     else:
         chosen_action = action

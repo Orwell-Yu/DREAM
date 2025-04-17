@@ -21,6 +21,7 @@ class RunProcessApp(tk.Tk):
         self.enable_reflection = tk.BooleanVar(value=True)
         self.enable_memory = tk.BooleanVar(value=True)
         self.enable_eval = tk.BooleanVar(value=True)
+        self.enable_reward = tk.BooleanVar(value=False)          # 新增 reward 开关
         self.model_backend = tk.StringVar(value="gpt")
         
         self.build_gui()
@@ -52,6 +53,7 @@ class RunProcessApp(tk.Tk):
         ttk.Checkbutton(self, text="Enable Reflection", variable=self.enable_reflection).grid(row=3, column=0, sticky="w", padx=5, pady=5)
         ttk.Checkbutton(self, text="Enable Memory", variable=self.enable_memory).grid(row=3, column=1, sticky="w", padx=5, pady=5)
         ttk.Checkbutton(self, text="Enable Eval", variable=self.enable_eval).grid(row=3, column=2, sticky="w", padx=5, pady=5)
+        ttk.Checkbutton(self, text="Enable Reward",    variable=self.enable_reward).grid(   row=3, column=3, sticky="w", padx=5, pady=5)
         
         # 第五行：Start 和 Stop 按钮
         self.start_button = ttk.Button(self, text="Start", command=self.start_process)
@@ -92,6 +94,8 @@ class RunProcessApp(tk.Tk):
             cmd.append("--disable_memory")
         if not self.enable_eval.get():
             cmd.append("--disable_eval")
+        if self.enable_eval.get() and self.enable_reward.get():
+            cmd.append("--enable_reward")
         # Add backend model selection
         cmd.extend(["--model_backend", self.model_backend.get()])
         
