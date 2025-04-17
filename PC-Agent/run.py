@@ -5,13 +5,16 @@ import torch
 import shutil
 from PIL import Image, ImageDraw
 
-from PCAgent.api import inference_chat as gpt_inference_chat, inference_chat_V2 as gpt_inference_chat_V2
-from PCAgent.api_gemini import inference_chat as gemini_inference_chat, inference_chat_V2 as gemini_inference_chat_V2
+import PCAgent.api as gpt_api
+import PCAgent.api_gemini as gemini_api
+
+import PCAgent.chat as gpt_chat
+import PCAgent.chat_gemini as gemini_chat
+
 from PCAgent.text_localization import ocr
 from PCAgent.icon_localization import det
 from PCAgent.prompt import get_action_prompt, get_eval_prompt, get_reflect_prompt, get_memory_prompt, get_process_prompt
-from PCAgent.chat import init_action_chat, init_eval_chat, init_reflect_chat, init_memory_chat, add_response
-from PCAgent.chat_gemini import init_action_chat, init_eval_chat, init_reflect_chat, init_memory_chat, add_response
+
 
 from modelscope.pipelines import pipeline
 from modelscope.utils.constant import Tasks
@@ -100,18 +103,26 @@ parser.add_argument('--gemini_api', type=str, default='AIzaSyAm_BULFr7orPO86S4FX
 
 args = parser.parse_args()
 gemini_token = args.gemini_api
-# Choose the appropriate API token based on backend
+
+# Choose backend
 if args.model_backend == 'gemini':
-    token = gemini_token
+    inference_chat = gemini_api.inference_chat
+    inference_chat_V2 = gemini_api.inference_chat_V2
+
+    init_action_chat = gemini_chat.init_action_chat
+    init_eval_chat = gemini_chat.init_eval_chat
+    init_reflect_chat = gemini_chat.init_reflect_chat
+    init_memory_chat = gemini_chat.init_memory_chat
+    add_response = gemini_chat.add_response
 else:
-    token = args.api_token
-# Choose inference backend
-if args.model_backend == 'gemini':
-    inference_chat = gemini_inference_chat
-    inference_chat_V2 = gemini_inference_chat_V2
-else:
-    inference_chat = gpt_inference_chat
-    inference_chat_V2 = gpt_inference_chat_V2
+    inference_chat = gpt_api.inference_chat
+    inference_chat_V2 = gpt_api.inference_chat_V2
+
+    init_action_chat = gpt_chat.init_action_chat
+    init_eval_chat = gpt_chat.init_eval_chat
+    init_reflect_chat = gpt_chat.init_reflect_chat
+    init_memory_chat = gpt_chat.init_memory_chat
+    add_response = gpt_chat.add_response
 
 if args.pc_type == "mac":
     ctrl_key = "command"
@@ -125,8 +136,13 @@ else:
 
 if args.model_backend == 'gemini':
     vl_model_version = 'gemini-2.0-flash-001'
+    API_url = None
+    token = gemini_token
 else:
     vl_model_version = 'gpt-4o'
+    API_url = args.api_url
+    token = args.api_token
+
 
 def get_screenshot():
     screenshot = pyautogui.screenshot()
@@ -195,8 +211,6 @@ if args.instruction != 'default':
 else:
     instruction = "Using Edge, add a adidas hat under $20 to cart in amazon."
 
-API_url = args.api_url
-token = args.api_token
 caption_call_method = "api"
 caption_model = "qwen-vl-max"
 qwen_api = args.qwen_api

@@ -1,140 +1,91 @@
-import copy
+import time
 from google import genai
-from google.genai.types import Part
+from google.genai.types import GenerateContentConfig
 
-# Initialize Gemini client
-# Replace 'YOUR_API_KEY' with your actual Gemini API key
-client = genai.Client(api_key="YOUR_API_KEY")
 MODEL = "gemini-2.0-flash-001"
 
 
-def init_action_chat():
-    """
-    Create a fresh chat history with a system instruction for action mode.
-    """
-    return [{
-        "role": "system",
-        "parts": [
-            Part(text="You are a helpful AI PC operating assistant. You need to help me operate the PC to complete the user's instruction.")
-        ]
-    }]
+def inference_chat(
+    chat_history,
+    model: str            = MODEL,
+    api_url: str          = None,   # 位置参数兼容，但不用于初始化
+    api_key: str          = None,
+    temperature: float    = 0.0,
+    seed: int             = 1234,
+    max_output_tokens: int= 2048
+) -> str:
+    # 始终使用 SDK 默认 endpoint
+    client = genai.Client(api_key=api_key)
 
-
-def init_eval_chat():
-    """
-    Create a fresh chat history with a system instruction for evaluation mode.
-    """
-    return [{
-        "role": "system",
-        "parts": [
-            Part(text="You are a helpful AI PC operating assistant. You need to help me operate the PC to complete the user's instruction.")
-        ]
-    }]
-
-
-def init_reflect_chat():
-    """
-    Create a fresh chat history with a system instruction for reflection mode.
-    """
-    return [{
-        "role": "system",
-        "parts": [
-            Part(text="You are a helpful AI PC operating assistant.")
-        ]
-    }]
-
-
-def init_memory_chat():
-    """
-    Create a fresh chat history with a system instruction for memory mode.
-    """
-    return [{
-        "role": "system",
-        "parts": [
-            Part(text="You are a helpful AI PC operating assistant.")
-        ]
-    }]
-
-
-def add_response_old(role, prompt, chat_history, image=None):
-    """
-    Append a single-turn response. If `image` is provided (filepath), it is sent as one image part.
-    """
-    new_history = copy.deepcopy(chat_history)
-    parts = [Part(text=prompt)]
-    if image:
-        parts.append(
-            Part.from_local_file(
-                file_path=image,
-                mime_type="image/jpeg"
-            )
-        )
-    new_history.append({
-        "role": role,
-        "parts": parts
-    })
-    return new_history
-
-
-def add_response(role, prompt, chat_history, image=[]):
-    """
-    Append a response with zero or more images (list of filepaths).
-    """
-    new_history = copy.deepcopy(chat_history)
-    parts = [Part(text=prompt)]
-    for img in image:
-        parts.append(
-            Part.from_local_file(
-                file_path=img,
-                mime_type="image/jpeg"
-            )
-        )
-    new_history.append({
-        "role": role,
-        "parts": parts
-    })
-    return new_history
-
-
-def add_response_two_image(role, prompt, chat_history, image):
-    """
-    Append a response that includes exactly two images (list of two filepaths).
-    """
-    new_history = copy.deepcopy(chat_history)
-    parts = [Part(text=prompt)]
-    # first image
-    parts.append(
-        Part.from_local_file(
-            file_path=image[0],
-            mime_type="image/jpeg"
-        )
-    )
-    # second image
-    parts.append(
-        Part.from_local_file(
-            file_path=image[1],
-            mime_type="image/jpeg"
-        )
-    )
-    new_history.append({
-        "role": role,
-        "parts": parts
-    })
-    return new_history
-
-
-def print_status(chat_history):
-    """
-    Pretty-print the chat history, showing role and placeholder for images.
-    """
-    print("*" * 100)
+    # 把 system-role 的文本和其他消息分离
+    system_texts = []
+    user_texts   = []
     for msg in chat_history:
-        print(f"role: {msg['role']}")
-        line = ""
-        for part in msg["parts"]:
-            if hasattr(part, "text") and part.text is not None:
-                line += part.text
-            elif getattr(part, "mime_type", "").startswith("image/"):
-                line += "<image>"
-        print(line)
-    print("*" * 100)
+        # 安全地拼接每个 part.text，None 视为空串
+        parts = msg.get("parts", [])
+        text = "".join((part.text or "") for part in parts)
+        if msg.get("role") == "system":
+            system_texts.append(text)
+        else:
+            user_texts.append(text)
+
+    config = GenerateContentConfig(
+        system_instruction=" ".join(system_texts) or None,
+        temperature=temperature,
+        seed=seed,
+        max_output_tokens=max_output_tokens
+    )
+
+    while True:
+        try:
+            resp = client.models.generate_content(
+                model=model,
+                contents=user_texts,
+                config=config
+            )
+            return resp.text
+        except Exception as e:
+            print(f"Gemini API Error: {e}, retrying in 1s…")
+            time.sleep(1)
+
+
+def inference_chat_V2(
+    chat_history,
+    model: str             = MODEL,
+    api_url: str           = None,
+    api_key: str           = None,
+    temperature: float     = 0.2,
+    seed: int              = 42,
+    max_output_tokens: int = 2048
+) -> str:
+    client = genai.Client(api_key=api_key)
+
+    system_texts = []
+    user_texts   = []
+    for msg in chat_history:
+        # 同样处理可能为 None 的 part.text
+        parts = msg.get("parts", [])
+        text = "".join((part.text or "") for part in parts)
+        if msg.get("role") == "system":
+            system_texts.append(text)
+        else:
+            user_texts.append(text)
+
+    config = GenerateContentConfig(
+        system_instruction=" ".join(system_texts) or None,
+        temperature=temperature,
+        seed=seed,
+        max_output_tokens=max_output_tokens
+    )
+
+    while True:
+        try:
+            resp = client.models.generate_content(
+                model=model,
+                contents=user_texts,
+                config=config
+            )
+            return resp.text
+        except Exception as e:
+            print(f"Gemini API Error: {e}, retrying in 1s…")
+            time.sleep(1)

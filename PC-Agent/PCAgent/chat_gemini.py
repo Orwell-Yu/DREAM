@@ -1,66 +1,124 @@
-import time
+import copy
 from google import genai
-from google.genai.types import GenerateContentConfig
+from google.genai.types import Part
 
-# —— 配置 ——  
-# 1) 用你的实际 API Key 或者在环境变量中配置 GOOGLE_API_KEY  
-# 2) 如果你要走 Vertex AI，还可以加上 vertexai=True, project, location 等参数  
-client = genai.Client(api_key="YOUR_API_KEY")  
-MODEL = "gemini-2.0-flash-001"  
+# Initialize Gemini client
+# Replace 'YOUR_API_KEY' with your actual Gemini API key
+client = genai.Client(api_key="YOUR_API_KEY")
+MODEL = "gemini-2.0-flash-001"
 
 
-def inference_chat(chat_history, 
-                   model: str = MODEL, 
-                   temperature: float = 0.0, 
-                   seed: int = 1234, 
-                   max_output_tokens: int = 2048) -> str:
+def init_action_chat():
     """
-    调用 Gemini API 生成回复（等价于原来的 inference_chat，temp=0.0, seed=1234）。
-    
-    chat_history: List[{"role": str, "parts": List[Part]}]
+    Create a fresh chat history with a system instruction for action mode.
     """
-    config = GenerateContentConfig(
-        temperature=temperature,
-        seed=seed,
-        max_output_tokens=max_output_tokens
-    )
-    
-    # 简单的重试逻辑
-    while True:
-        try:
-            resp = client.models.generate_content(
-                model=model,
-                contents=chat_history,
-                config=config
-            )
-            return resp.text
-        except Exception as e:
-            print(f"Gemini API Error: {e}, retrying in 1s…")
-            time.sleep(1)
+    return [{
+        "role": "system",
+        "parts": [
+            Part(text="You are a helpful AI PC operating assistant. You need to help me operate the PC to complete the user's instruction.")
+        ]
+    }]
 
 
-def inference_chat_V2(chat_history, 
-                      model: str = MODEL, 
-                      temperature: float = 0.2, 
-                      seed: int = 42, 
-                      max_output_tokens: int = 2048) -> str:
+def init_eval_chat():
     """
-    调用 Gemini API 生成回复（等价于原来的 inference_chat_V2，temp=0.2, seed=42）。
+    Create a fresh chat history with a system instruction for evaluation mode.
     """
-    config = GenerateContentConfig(
-        temperature=temperature,
-        seed=seed,
-        max_output_tokens=max_output_tokens
-    )
-    
-    while True:
-        try:
-            resp = client.models.generate_content(
-                model=model,
-                contents=chat_history,
-                config=config
-            )
-            return resp.text
-        except Exception as e:
-            print(f"Gemini API Error: {e}, retrying in 1s…")
-            time.sleep(1)
+    return [{
+        "role": "system",
+        "parts": [
+            Part(text="You are a helpful AI PC operating assistant. You need to help me operate the PC to complete the user's instruction.")
+        ]
+    }]
+
+
+def init_reflect_chat():
+    """
+    Create a fresh chat history with a system instruction for reflection mode.
+    """
+    return [{
+        "role": "system",
+        "parts": [
+            Part(text="You are a helpful AI PC operating assistant.")
+        ]
+    }]
+
+
+def init_memory_chat():
+    """
+    Create a fresh chat history with a system instruction for memory mode.
+    """
+    return [{
+        "role": "system",
+        "parts": [
+            Part(text="You are a helpful AI PC operating assistant.")
+        ]
+    }]
+
+
+def add_response(role, prompt, chat_history, image_paths=None):
+    """
+    Append a response with zero or more images (list of filepaths).
+    Reads each image locally and inlines it via Part.from_bytes().
+    """
+    new_history = copy.deepcopy(chat_history)
+    parts = [Part.from_text(text=prompt)]
+    for img_path in image_paths or []:
+        with open(img_path, "rb") as f:
+            img_bytes = f.read()
+        parts.append(Part.from_bytes(data=img_bytes, mime_type="image/jpeg"))
+    new_history.append({
+        "role": role,
+        "parts": parts
+    })
+    return new_history
+
+def add_response_old(role, prompt, chat_history, image_paths=None):
+    """
+    Legacy single-image version, updated to use inline bytes.
+    """
+    new_history = copy.deepcopy(chat_history)
+    parts = [Part.from_text(text=prompt)]
+    if image_paths:
+        # assume list of one
+        img = image_paths[0]
+        with open(img, "rb") as f:
+            img_bytes = f.read()
+        parts.append(Part.from_bytes(data=img_bytes, mime_type="image/jpeg"))
+    new_history.append({
+        "role": role,
+        "parts": parts
+    })
+    return new_history
+
+def add_response_two_image(role, prompt, chat_history, image_paths):
+    """
+    Append a response that includes exactly two images.
+    """
+    new_history = copy.deepcopy(chat_history)
+    parts = [Part.from_text(text=prompt)]
+    for img_path in image_paths:
+        with open(img_path, "rb") as f:
+            img_bytes = f.read()
+        parts.append(Part.from_bytes(data=img_bytes, mime_type="image/jpeg"))
+    new_history.append({
+        "role": role,
+        "parts": parts
+    })
+    return new_history
+
+def print_status(chat_history):
+    """
+    Pretty-print the chat history, showing role and placeholder for images.
+    """
+    print("*" * 100)
+    for msg in chat_history:
+        print(f"role: {msg['role']}")
+        line = ""
+        for part in msg["parts"]:
+            if hasattr(part, "text") and part.text is not None:
+                line += part.text
+            elif getattr(part, "mime_type", "").startswith("image/"):
+                line += "<image>"
+        print(line)
+    print("*" * 100)
