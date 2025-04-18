@@ -547,17 +547,21 @@ while True:
 
         if enable_reward:
             base_model_name = "qwen/Qwen2.5-0.5B"
-            reward_model_dir = "../reward_model"
+            reward_model_dir = "../reward_model_out"
             # 1) 准备 tokenizer
-            tokenizer = HFTokenizer.from_pretrained(
-                base_model_name,
-                trust_remote_code=True
-            )
-            # 2) 实例化 RewardModel 并加载权重
+            # 1) 先从 Hugging Face Hub 或本地把 base_model 拿回来
+            tokenizer = HFTokenizer.from_pretrained(base_model_name, trust_remote_code=True)
             reward_model = RewardModel(base_model_name)
+            reward_model.to(device)
+
+            # 2) 读 checkpoint，但 strict=False，意味着“只加载那些能对上尺寸的权重”
             state = torch.load(os.path.join(reward_model_dir, "pytorch_model.bin"), map_location=device)
-            reward_model.load_state_dict(state)
-            reward_model.to(device).eval()
+            reward_model.load_state_dict(state, strict=False)
+
+            # 3) 切 eval / no grad
+            reward_model.eval()
+            for p in reward_model.parameters():
+                p.requires_grad = False
 
             textA = (
                 f"intent: {instruction}\n"
