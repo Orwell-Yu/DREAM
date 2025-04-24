@@ -38,6 +38,8 @@ from PIL import ImageFont
 from reward.rewardmodel import RewardModel
 from transformers import AutoTokenizer as HFTokenizer
 
+pyautogui.FAILSAFE = False
+
 # Open word and create a new document named "hello, world", and type "hello, world" in it.
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -522,6 +524,7 @@ while True:
     log_print('#' * len(status))
 
     if eval_switch:
+        print("Planning Scaling Enabled")
         # 第二次规划：生成决策 B（变量名后加2）
         chat_action2 = init_action_chat()
         if args.use_som == 1:

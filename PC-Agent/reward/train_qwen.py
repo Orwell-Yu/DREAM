@@ -257,7 +257,7 @@ if __name__ == "__main__":
     # 训练超参数
     parser.add_argument("--max_length", type=int, default=512, help="Max sequence length")
     parser.add_argument("--batch_size", type=int, default=4, help="Batch size per GPU (adjust based on VRAM)")
-    parser.add_argument("--epochs", type=int, default=5, help="Number of training epochs") # 减少默认 epochs 方便测试
+    parser.add_argument("--epochs", type=int, default=20, help="Number of training epochs") # 减少默认 epochs 方便测试
     parser.add_argument("--learning_rate", type=float, default=5e-6, help="Learning rate")
     parser.add_argument("--warmup_ratio", type=float, default=0.1, help="Warmup steps ratio")
     parser.add_argument("--max_grad_norm", type=float, default=1.0, help="Max gradient norm for clipping (if used)")
@@ -265,8 +265,8 @@ if __name__ == "__main__":
     # parser.add_argument("--margin", type=float, default=1.0, help="Margin for MarginRankingLoss")
     # 其他参数
     parser.add_argument("--num_workers", type=int, default=2, help="Number of workers for DataLoader")
-    parser.add_argument("--log_steps", type=int, default=10, help="Logging interval (steps)")
-    parser.add_argument("--early_stopping_patience", type=int, default=3, help="Patience for early stopping")
+    parser.add_argument("--log_steps", type=int, default=20, help="Logging interval (steps)")
+    parser.add_argument("--early_stopping_patience", type=int, default=5, help="Patience for early stopping")
     parser.add_argument("--use_wandb", action='store_true', help="Enable Weights & Biases logging") # 添加 W&B 开关
     parser.add_argument("--wandb_project", type=str, default="reward_model_single_gpu", help="Weights & Biases project name")
 
