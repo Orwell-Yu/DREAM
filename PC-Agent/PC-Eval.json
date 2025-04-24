@@ -13,7 +13,6 @@
 "Open the 'test_doc2' file in 'Documents' in File Explorer, set the title to be centered, and set the last paragraph to be underlined in Word.",
 "Open the 'test_doc3' file in 'Documents' in File Explorer, write down the translation of the content below the main text.",
 "Access https://arxiv.org/ in Chrome, search for papers related to 'multimodal agent', and download the first paper.",
-"Read the sent mail 'Travel' to Howie in Outlook, record the departure, destination and start date of the journey. Search for a one-way flight on booking.com on Chrome.",
 "Search in Chrome for the IMDb ratings of 'Leon: The Professional', 'The Shawshank Redemption', and '2001: A Space Odyssey'. Record them in a new .txt file using Notepad, sorted from highest to lowest.",
 "Check the sent mail 'Code' to Howie in Outlook, download the attachment 'homework.py' and open it in Visual Studio Code. Fix the error in this python code.",
 "Create a new Python file in Visual Studio Code, write a function that takes a list as input and outputs the k-th largest number in the list. Send this code file to Howie via Outlook.",

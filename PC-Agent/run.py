@@ -658,13 +658,56 @@ while True:
         app = chosen_action.split("(")[-1].split(")")[0]
         open_app(app)
     elif "Type" in chosen_action:
-        coordinate = chosen_action.split("(")[1].split(")")[0].split(", ")
-        x, y = int(coordinate[0]), int(coordinate[1])
-        if "[text]" not in chosen_action:
-            text = chosen_action.split("[")[-1].split("]")[0]
-        else:
-            text = chosen_action.split(" \"")[-1].split("\"")[0]
-        tap_type_enter(x, y, text)
+        try:
+            # Find the first opening parenthesis and the corresponding closing parenthesis
+            start_coord = chosen_action.find("(")
+            end_coord = chosen_action.find(")")
+
+            if start_coord != -1 and end_coord != -1 and end_coord > start_coord:
+                # Extract coordinates
+                coord_part = chosen_action[start_coord + 1:end_coord]
+                coordinate = coord_part.split(",")
+                if len(coordinate) == 2:
+                    x = int(coordinate[0].strip())
+                    y = int(coordinate[1].strip())
+
+                    # Extract text following the coordinates
+                    # Find the start of the text after the closing parenthesis
+                    text_start_index = end_coord + 1
+                    # Skip potential separating characters like comma and space
+                    while text_start_index < len(chosen_action) and (chosen_action[text_start_index] == ',' or chosen_action[text_start_index].isspace()):
+                        text_start_index += 1
+
+                    text = chosen_action[text_start_index:].strip()
+
+                    # Optional: Remove surrounding quotes if they exist (for robustness)
+                    if text.startswith('"') and text.endswith('"'):
+                        text = text[1:-1]
+                    elif text.startswith("'") and text.endswith("'"):
+                        text = text[1:-1]
+                    elif text.startswith('[') and text.endswith(']'): # Handle potential [text] format
+                        text = text[1:-1] # Assumes format like Type (x, y), [some text]
+
+
+                    if not text:
+                        log_print(f"Warning: Extracted empty text for Type action: {chosen_action}")
+                        # Decide how to handle this: maybe skip, maybe try a default action?
+                        # For now, we'll proceed but log a warning. You might want to raise an error.
+
+                    log_print(f"Parsed for tap_type_enter: x={x}, y={y}, text='{text}'")
+                    tap_type_enter(x, y, text) # Call the function with correctly parsed arguments
+
+                else:
+                    log_print(f"Error: Could not parse coordinates correctly from {chosen_action}")
+                    error_flag = True # Indicate an error occurred
+            else:
+                log_print(f"Error: Could not find valid coordinates format '(x, y)' in {chosen_action}")
+                error_flag = True # Indicate an error occurred
+
+        except Exception as e:
+            log_print(f"Error parsing 'Type' action string: '{chosen_action}'")
+            log_print(f"Error details: {e}")
+            error_flag = True # Indicate an error occurred
     elif "Stop" in chosen_action:
         break
 
