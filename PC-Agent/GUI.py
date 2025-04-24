@@ -25,11 +25,7 @@ class RunProcessApp(tk.Tk):
         self.enable_memory = tk.BooleanVar(value=True)
         self.enable_eval = tk.BooleanVar(value=True)
         self.enable_reward = tk.BooleanVar(value=False)
-        # ============================================================
-        # CHANGED DEFAULT MODEL TO GEMINI
-        # ============================================================
         self.model_backend = tk.StringVar(value="gemini") # Default model changed
-        # ============================================================
 
         self.build_gui()
         self.process = None
@@ -38,34 +34,36 @@ class RunProcessApp(tk.Tk):
         self.log_file = None
 
         # ============================================================
-        # UPDATED FILTER REGEX PATTERN (v4)
+        # UPDATED FILTER REGEX PATTERN (v5) - Fixed DeprecationWarning
         # ============================================================
-        # (Filter pattern remains the same as the previous version)
+        # Removed inline flags (?i) and added re.IGNORECASE to compile()
         self._filter_pattern = re.compile(
             # --- Original Single-line Patterns ---
-            r"^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}[,.]\d+\s+-\s+\w+\s+-|"
-            r"\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d+:\s+[IWEF]\s+tensorflow|"
-            r"WARNING:tensorflow:|"
-            r"SupervisionWarnings:|"
+            r"^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}[,.]\d+\s+-\s+\w+\s+-|"  # Grp 1: Timestamp - module -
+            r"\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d+:\s+[IWEF]\s+tensorflow|" # Grp 2: TF Timestamp Info/Warn/Error
+            r"WARNING:tensorflow:|"  # Grp 3: TF Warning direct
+            r"SupervisionWarnings:|"  # Grp 4: Supervision Warning
 
             # --- New Specific Lines ---
-            r"^final text_encoder_type:|(?i)"
-            r"^\s*To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags\.$|"
+            r"^final text_encoder_type:|" # Grp 5: GroundingDINO path line (case handled by IGNORECASE flag)
+            r"^\s*To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags\.$|" # Grp 6: TF rebuild instruction
 
-            # --- Enhanced Patterns for TF Update Instructions (v4) ---
+            # --- Enhanced Patterns for TF Update Instructions (v5) ---
+            # Removed inline flags, made periods optional
             r"Instructions for updating:$|"
             r"^\s*tf\.py_func is deprecated in TF V2\. Instead, there are two|"
-            r"^\s*options available in V2\.?|(?i)"
-            r"^\s*- tf\.py_function takes a python function which manipulates tf eager|(?i)"
-            r"^\s*tensors instead of numpy arrays\. It's easy to convert a tf eager tensor to|(?i)"
-            r"^\s*an ndarray \(just call tensor\.numpy\(\)\) but having access to eager tensors|(?i)"
-            r"^\s*means `tf\.py_function`s can use accelerators such as GPUs as well as|(?i)"
-            r"^\s*being differentiable using a gradient tape\.?|(?i)"
-            r"^\s*- tf\.numpy_function maintains the semantics of the deprecated tf\.py_func|(?i)"
-            r"^\s*\(it is not differentiable, and manipulates numpy arrays\)\. It drops the|(?i)"
-            r"^\s*stateful argument making all functions stateful\.?|(?i)"
+            r"^\s*options available in V2\.?|"
+            r"^\s*- tf\.py_function takes a python function which manipulates tf eager|"
+            r"^\s*tensors instead of numpy arrays\. It's easy to convert a tf eager tensor to|"
+            r"^\s*an ndarray \(just call tensor\.numpy\(\)\) but having access to eager tensors|"
+            r"^\s*means `tf\.py_function`s can use accelerators such as GPUs as well as|"
+            r"^\s*being differentiable using a gradient tape\.?|"
+            r"^\s*- tf\.numpy_function maintains the semantics of the deprecated tf\.py_func|"
+            r"^\s*\(it is not differentiable, and manipulates numpy arrays\)\. It drops the|"
+            r"^\s*stateful argument making all functions stateful\.?|"
             r"^\s*Use `tf\.config\.list_physical_devices\('GPU'\)` instead\.?$"
-            r")"
+            r")",
+            flags=re.IGNORECASE # Apply case-insensitivity to the entire pattern here
         )
         # ============================================================
 
@@ -91,7 +89,6 @@ class RunProcessApp(tk.Tk):
         ttk.Radiobutton(pc_frame, text="Windows", variable=self.pc_type, value="windows").pack(side=tk.LEFT)
         ttk.Radiobutton(pc_frame, text="Mac", variable=self.pc_type, value="mac").pack(side=tk.LEFT, padx=10)
         ttk.Label(self, text="Model:").grid(row=2, column=2, sticky="e", padx=5, pady=5)
-        # The Combobox will now show "gemini" by default due to the variable change
         ttk.Combobox(self, textvariable=self.model_backend, values=["gpt", "gemini"], state="readonly", width=10).grid(row=2, column=3, sticky="w", padx=5, pady=5)
 
         # Fourth row: Feature switches
@@ -145,7 +142,6 @@ class RunProcessApp(tk.Tk):
             run_py_args.append("--disable_eval")
         if self.enable_eval.get() and self.enable_reward.get():
              run_py_args.append("--enable_reward")
-        # The selected value (defaulting to gemini) will be passed
         run_py_args.extend(["--model_backend", self.model_backend.get()])
         cmd = base_cmd + run_py_args
 
@@ -233,7 +229,7 @@ Command Executed:
         self.process_thread.start()
 
     def read_process_output(self):
-        # --- read_process_output method --- (Same as before)
+        # --- read_process_output method --- (Uses the updated pattern)
         """Reads output, filters using self._filter_pattern, puts valid lines in queue/log."""
         try:
             if self.process and self.process.stdout:
