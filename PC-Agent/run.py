@@ -95,8 +95,8 @@ parser.add_argument('--draw_text_box', type=int, default=0, help="whether to dra
 parser.add_argument('--font_path', type=str, default="/System/Library/Fonts/Times.ttc")
 parser.add_argument('--pc_type', type=str, default="windows")  # windows or mac
 parser.add_argument('--api_url', type=str, default="https://api.openai.com/v1/chat/completions", help="GPT-4o api url.")
-parser.add_argument('--api_token', type=str, default='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', help="Your GPT-4o api token.")
-parser.add_argument('--qwen_api', type=str, default='sk-d3898311371f4eaea9941fa28d10adea', help="Input your Qwen-VL api if icon_caption=1.")
+parser.add_argument('--api_token', type=str, default='sk-...', help="Your GPT-4o api token.")
+parser.add_argument('--qwen_api', type=str, default='sk-...', help="Input your Qwen-VL api if icon_caption=1.")
 parser.add_argument('--add_info', type=str, default='')
 parser.add_argument('--disable_reflection', action='store_true')  
 parser.add_argument('--disable_memory', action='store_true')
@@ -105,7 +105,7 @@ parser.add_argument('--enable_reward', action='store_true')
 # 新增参数：如果选择了 direct_print，则只打印到终端，不写入文件日志
 parser.add_argument('--direct_print', action='store_true', help="If set, only print to terminal without writing log file.")
 parser.add_argument('--model_backend', type=str, choices=['gpt','gemini'], default='gpt', help="Choose LLM backend: 'gpt' or 'gemini'.")
-parser.add_argument('--gemini_api', type=str, default='AIzaSyAm_BULFr7orPO86S4FXeqI52Je9hIdxRs', help="Your Gemini API key.")
+parser.add_argument('--gemini_api', type=str, default='AI...', help="Your Gemini API key.")
 
 args = parser.parse_args()
 gemini_token = args.gemini_api
